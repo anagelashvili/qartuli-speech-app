@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ka">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ქართული მეტყველება</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app" aria-label="ქართული მეტყველების ამოცნობა">
+      <button id="startBtn" class="voiceButton" type="button" aria-label="მოსმენის დაწყება">
+        <span class="voiceHalo" aria-hidden="true"></span>
+        <span class="voiceCore" aria-hidden="true"></span>
+        <span class="voiceWave voiceWaveOne" aria-hidden="true"></span>
+        <span class="voiceWave voiceWaveTwo" aria-hidden="true"></span>
+      </button>
+      <p id="voiceLabel" class="voiceLabel">დააჭირე და ილაპარაკე</p>
+      <section class="transcript" aria-label="ამოცნობილი ტექსტი">
+        <p id="transcriptText">აქ დაიწერება შენი ნალაპარაკები</p>
+        <p id="liveText"></p>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

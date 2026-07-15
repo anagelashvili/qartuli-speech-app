@@ -3,24 +3,53 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ქართული მეტყველება</title>
+    <title>ქართული პრეზენტაციის მკითხველი</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="app" aria-label="ქართული მეტყველების ამოცნობა">
-      <button id="startBtn" class="voiceButton" type="button" aria-label="მოსმენის დაწყება">
-        <span class="voiceHalo" aria-hidden="true"></span>
-        <span class="voiceCore" aria-hidden="true"></span>
-        <span class="voiceWave voiceWaveOne" aria-hidden="true"></span>
-        <span class="voiceWave voiceWaveTwo" aria-hidden="true"></span>
-      </button>
-      <p id="voiceLabel" class="voiceLabel">დააჭირე და ილაპარაკე</p>
-      <section class="transcript" aria-label="ამოცნობილი ტექსტი">
-        <p id="transcriptText">აქ დაიწერება შენი ნალაპარაკები</p>
-        <p id="liveText"></p>
+    <main class="app">
+      <header class="toolbar" aria-label="ატვირთვა და მართვა">
+        <label class="filePicker">
+          <span>PowerPoint</span>
+          <input id="pptInput" type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+        </label>
+
+        <label class="filePicker">
+          <span>Word ტექსტი</span>
+          <input id="docInput" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+        </label>
+
+        <select id="voiceSelect" aria-label="ხმის არჩევა">
+          <option value="">ქართული ხმა</option>
+        </select>
+
+        <div class="buttons">
+          <button id="prevBtn" type="button" title="წინა სლაიდი">‹</button>
+          <button id="playBtn" type="button">წაკითხვა</button>
+          <button id="nextBtn" type="button" title="შემდეგი სლაიდი">›</button>
+        </div>
+      </header>
+
+      <section class="reader">
+        <section class="slideFrame" aria-label="პრეზენტაციის ფრეიმი">
+          <div class="slideMeta">
+            <span id="slideCounter">სლაიდი 0 / 0</span>
+            <span id="statusText">ატვირთე PowerPoint და Word ტექსტი</span>
+          </div>
+          <article id="slideCanvas" class="slideCanvas">
+            <h1>ქართული პრეზენტაციის მკითხველი</h1>
+            <p>ატვირთე .pptx პრეზენტაცია და სურვილის შემთხვევაში .docx ტექსტი. შემდეგ დააჭირე „წაკითხვა“-ს.</p>
+          </article>
+        </section>
+
+        <aside class="scriptPanel" aria-label="წასაკითხი ტექსტი">
+          <h2>სლაიდის ტექსტი</h2>
+          <p id="scriptText">აქ გამოჩნდება ტექსტი, რომელსაც ქართული ხმა წაიკითხავს.</p>
+        </aside>
       </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="script.js"></script>
   </body>
 </html>

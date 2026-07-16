@@ -1,13 +1,16 @@
 const pptInput = document.querySelector("#pptInput");
 const docInput = document.querySelector("#docInput");
+const setupFileInput = document.querySelector("#setupFileInput");
 const voiceSelect = document.querySelector("#voiceSelect");
 const pptName = document.querySelector("#pptName");
 const docName = document.querySelector("#docName");
 const prevBtn = document.querySelector("#prevBtn");
 const playBtn = document.querySelector("#playBtn");
+const setupPlayBtn = document.querySelector("#setupPlayBtn");
 const nextBtn = document.querySelector("#nextBtn");
 const testVoiceBtn = document.querySelector("#testVoiceBtn");
 const diagnosticText = document.querySelector("#diagnosticText");
+const progressFill = document.querySelector("#progressFill");
 const slideCounter = document.querySelector("#slideCounter");
 const statusText = document.querySelector("#statusText");
 const slideCanvas = document.querySelector("#slideCanvas");
@@ -185,12 +188,15 @@ function renderSlide() {
   const count = slides.length;
 
   slideCounter.textContent = `სლაიდი ${count ? currentSlide + 1 : 0} / ${count}`;
+  progressFill.style.width = count ? `${((currentSlide + 1) / count) * 100}%` : "0%";
   prevBtn.disabled = !count || currentSlide === 0;
   nextBtn.disabled = !count || currentSlide === count - 1;
   playBtn.disabled = !count;
+  setupPlayBtn.disabled = !count;
 
   if (!slide) {
     slideCanvas.innerHTML = `
+      <p class="slideKicker">მომზადება</p>
       <h2>დაიწყე ფაილების ატვირთვით</h2>
       <p>ატვირთე .pptx პრეზენტაცია და სურვილის შემთხვევაში .docx ტექსტი. შემდეგ დააჭირე „წაკითხვა“-ს.</p>
     `;
@@ -200,6 +206,7 @@ function renderSlide() {
 
   const script = getSlideScript(currentSlide);
   slideCanvas.innerHTML = `
+    <p class="slideKicker">ქართული ხმა</p>
     <h2>${escapeHtml(slide.title)}</h2>
     <p>${escapeHtml(slide.text)}</p>
   `;
@@ -280,7 +287,8 @@ function stopReading() {
   isReading = false;
   isVisualFallback = false;
   document.body.classList.remove("reading");
-  playBtn.textContent = "წაკითხვა";
+  playBtn.textContent = "▶";
+  setupPlayBtn.textContent = "წაკითხვა";
 }
 
 async function speakWithBackend(text, onDone) {
@@ -397,7 +405,8 @@ function visualFallbackReadCurrentSlide(reason) {
   isReading = true;
   isVisualFallback = true;
   document.body.classList.add("reading");
-  playBtn.textContent = "შეჩერება";
+  playBtn.textContent = "■";
+  setupPlayBtn.textContent = "შეჩერება";
   setStatus(`ხმა არ ირთვება (${reason}). demo რეჟიმში სლაიდი ავტომატურად გადავა.`);
 
   clearTimeout(advanceTimer);
@@ -462,7 +471,8 @@ function speakNextPart() {
     if (state === "start") {
       isReading = true;
       document.body.classList.add("reading");
-      playBtn.textContent = "შეჩერება";
+      playBtn.textContent = "■";
+      setupPlayBtn.textContent = "შეჩერება";
       setStatus(`კითხულობს: ნაწილი ${readingPartIndex + 1} / ${readingParts.length}`);
     }
 
@@ -544,6 +554,39 @@ docInput.addEventListener("change", async (event) => {
   }
 });
 
+setupFileInput.addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) {
+    return;
+  }
+
+  if (file.name.toLowerCase().endsWith(".pptx")) {
+    pptName.textContent = file.name;
+    stopReading();
+    setStatus("PowerPoint იტვირთება...");
+    try {
+      await loadPowerPoint(file);
+    } catch (error) {
+      setStatus(error.message || "PowerPoint ვერ ჩაიტვირთა");
+    }
+    return;
+  }
+
+  if (file.name.toLowerCase().endsWith(".docx")) {
+    docName.textContent = file.name;
+    stopReading();
+    setStatus("Word ტექსტი იტვირთება...");
+    try {
+      await loadWord(file);
+    } catch (error) {
+      setStatus("Word ტექსტი ვერ ჩაიტვირთა");
+    }
+    return;
+  }
+
+  setStatus("მხოლოდ .pptx ან .docx ფაილი აირჩიე");
+});
+
 playBtn.addEventListener("click", () => {
   if (isReading) {
     stopReading();
@@ -552,6 +595,10 @@ playBtn.addEventListener("click", () => {
   }
 
   readCurrentSlide();
+});
+
+setupPlayBtn.addEventListener("click", () => {
+  playBtn.click();
 });
 
 prevBtn.addEventListener("click", () => goToSlide(currentSlide - 1));

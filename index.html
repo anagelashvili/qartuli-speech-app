@@ -8,26 +8,94 @@
   </head>
   <body>
     <main class="app">
-      <header class="hero">
-        <div>
-          <p class="eyebrow">ქართული AI პრეზენტატორი</p>
-          <h1>პრეზენტაცია, რომელიც ქართულად კითხულობს ტექსტს</h1>
+      <nav class="tabs" aria-label="სექციები">
+        <a href="#playback">Playback</a>
+        <a href="#setup">Setup</a>
+      </nav>
+
+      <section id="playback" class="playerShell">
+        <header class="playerHeader">
+          <div class="brand">
+            <span class="brandMark" aria-hidden="true"></span>
+            <h1>ქართული ხმა</h1>
+          </div>
+
+          <div class="fileChips" aria-label="ატვირთული ფაილები">
+            <label class="chip">
+              <span aria-hidden="true">◫</span>
+              <strong id="pptName">prezentacia.pptx</strong>
+              <input id="pptInput" type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+            </label>
+            <label class="chip">
+              <span aria-hidden="true">□</span>
+              <strong id="docName">dbquiz3.docx</strong>
+              <input id="docInput" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+            </label>
+          </div>
+
+          <button id="testVoiceBtn" class="reviewBtn" type="button">
+            <span aria-hidden="true">□</span>
+            demo რეჟიმი
+          </button>
+        </header>
+
+        <section class="readerGrid">
+          <div class="mainColumn">
+            <section class="stage" aria-label="პრეზენტაციის ფრეიმი">
+              <article id="slideCanvas" class="slideCanvas">
+                <p class="slideKicker">მომზადება</p>
+                <h2>ნორმალიზაციის შესახებ ფორმა</h2>
+                <p>ყველა ატვირთული ტექსტი გამოჩნდება სლაიდის ფრეიმში.</p>
+              </article>
+            </section>
+
+            <section class="transport" aria-label="პრეზენტაციის მართვა">
+              <button id="prevBtn" type="button" title="წინა სლაიდი">‹</button>
+              <button id="playBtn" type="button" title="წაკითხვა">▶</button>
+              <button id="nextBtn" type="button" title="შემდეგი სლაიდი">›</button>
+              <div class="progress" aria-hidden="true">
+                <span id="progressFill"></span>
+              </div>
+              <span id="slideCounter" class="counter">0 / 0</span>
+              <span class="speed">1.0×</span>
+            </section>
+
+            <div class="metaLine">
+              <span aria-hidden="true">□</span>
+              <span>ავტომატური გადართვა · 2 წმ</span>
+            </div>
+            <div class="metaLine activeMeta">
+              <span aria-hidden="true">□</span>
+              <span id="statusText">ატვირთე PowerPoint და Word ტექსტი</span>
+            </div>
+          </div>
+
+          <aside class="scriptPanel" aria-label="წასაკითხი ტექსტი">
+            <p class="panelLabel">წასაკითხი ტექსტი</p>
+            <p id="scriptText">აქ გამოჩნდება ტექსტი, რომელსაც ქართული ხმა წაიკითხავს.</p>
+            <button class="reviewBtn panelAction" type="button">
+              <span aria-hidden="true">□</span>
+              demo რეჟიმი
+            </button>
+          </aside>
+        </section>
+      </section>
+
+      <section id="setup" class="setupShell">
+        <h2>დაიწყე ფაილების ატვირთვით</h2>
+        <p>ატვირთე .pptx პრეზენტაცია და .docx ტექსტი არჩევითად.</p>
+
+        <div class="dropZone">
+          <span aria-hidden="true">□</span>
+          <strong>ჩააგდე ან აირჩიე</strong>
+          <small>.pptx · .docx</small>
         </div>
-        <p id="statusText" class="statusPill">ატვირთე PowerPoint და Word ტექსტი</p>
-      </header>
 
-      <section class="workspace">
-        <aside class="controlPanel" aria-label="ატვირთვა და მართვა">
-          <label class="filePicker">
-            <span>PowerPoint ფაილი</span>
-            <strong id="pptName">.pptx ატვირთე</strong>
-            <input id="pptInput" type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
-          </label>
-
-          <label class="filePicker">
-            <span>Word ტექსტი</span>
-            <strong id="docName">.docx ატვირთე</strong>
-            <input id="docInput" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+        <div class="setupControls">
+          <label class="fileRow">
+            <span aria-hidden="true">□</span>
+            <strong>PowerPoint ან Word</strong>
+            <input id="setupFileInput" type="file" accept=".pptx,.docx" />
           </label>
 
           <label class="selectWrap">
@@ -37,31 +105,10 @@
             </select>
           </label>
 
-          <div class="buttons">
-            <button id="prevBtn" type="button" title="წინა სლაიდი">‹</button>
-            <button id="playBtn" type="button">წაკითხვა</button>
-            <button id="nextBtn" type="button" title="შემდეგი სლაიდი">›</button>
-          </div>
+          <button id="setupPlayBtn" class="pinkBtn" type="button">წაკითხვა</button>
+        </div>
 
-          <button id="testVoiceBtn" class="ghostBtn" type="button">ხმის ტესტი</button>
-          <p id="diagnosticText" class="diagnostic">AI ხმა მოწმდება. თუ API key სწორია, ქართული აუდიო Vercel backend-იდან ჩაირთვება.</p>
-        </aside>
-
-        <section class="stage" aria-label="პრეზენტაციის ფრეიმი">
-          <div class="slideTop">
-            <span id="slideCounter">სლაიდი 0 / 0</span>
-            <span>ავტომატური გადართვა: 2 წამი</span>
-          </div>
-          <article id="slideCanvas" class="slideCanvas">
-            <h2>დაიწყე ფაილების ატვირთვით</h2>
-            <p>ატვირთე PowerPoint პრეზენტაცია და Word ტექსტი. ტექსტის დასრულებიდან 2 წამში სლაიდი ავტომატურად შეიცვლება.</p>
-          </article>
-        </section>
-
-        <aside class="scriptPanel" aria-label="წასაკითხი ტექსტი">
-          <h2>წასაკითხი ტექსტი</h2>
-          <p id="scriptText">აქ გამოჩნდება ტექსტი, რომელსაც ხმა წაიკითხავს.</p>
-        </aside>
+        <p id="diagnosticText" class="diagnostic">AI ხმა მოწმდება. თუ API key სწორია, ქართული აუდიო Vercel backend-იდან ჩაირთვება.</p>
       </section>
     </main>
 

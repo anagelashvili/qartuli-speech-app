@@ -123,34 +123,45 @@ function createSlidesFromDocSegments() {
 
 async function loadWord(file) {
   const zip = await readZipFile(file);
-  const documentFile = zip.file("word/document.xml");
-  if (!documentFile) {
-    throw new Error("Word document.xml ვერ მოიძებნა");
+  const wordXmlFiles = Object.keys(zip.files)
+    .filter((name) => /^word\/.+\.xml$/.test(name) && !name.includes("_rels/"))
+    .sort((a, b) => {
+      if (a === "word/document.xml") return -1;
+      if (b === "word/document.xml") return 1;
+      return a.localeCompare(b);
+    });
+
+  if (!wordXmlFiles.length) {
+    throw new Error("Word XML ფაილები ვერ მოიძებნა");
   }
 
-  const documentXml = await documentFile.async("text");
-  const xml = new DOMParser().parseFromString(documentXml, "application/xml");
-  let paragraphs = [...xml.getElementsByTagName("*")]
-    .filter((node) => node.localName === "p")
-    .map((paragraph) =>
-      [...paragraph.getElementsByTagName("*")]
-        .filter((node) => node.localName === "t")
-        .map((node) => node.textContent)
-        .join("")
-        .replace(/\s+/g, " ")
-        .trim()
-    )
-    .filter(Boolean);
+  let paragraphs = [];
 
-  if (!paragraphs.length) {
-    const textMatches = [...documentXml.matchAll(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g)];
-    const fallbackText = textMatches
-      .map((match) => decodeXmlText(match[1]))
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
+  for (const name of wordXmlFiles) {
+    const xmlText = await zip.file(name).async("text");
+    const xml = new DOMParser().parseFromString(xmlText, "application/xml");
+    const xmlParagraphs = [...xml.getElementsByTagName("*")]
+      .filter((node) => node.localName === "p")
+      .map((paragraph) =>
+        [...paragraph.getElementsByTagName("*")]
+          .filter((node) => node.localName === "t")
+          .map((node) => node.textContent)
+          .join("")
+          .replace(/\s+/g, " ")
+          .trim()
+      )
+      .filter(Boolean);
 
-    paragraphs = fallbackText ? [fallbackText] : [];
+    paragraphs.push(...xmlParagraphs);
+
+    if (!xmlParagraphs.length) {
+      const textMatches = [...xmlText.matchAll(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g)];
+      paragraphs.push(
+        ...textMatches
+          .map((match) => decodeXmlText(match[1]).replace(/\s+/g, " ").trim())
+          .filter(Boolean)
+      );
+    }
   }
 
   docFullText = paragraphs.join("\n\n");
@@ -315,6 +326,11 @@ function speakText(text, onDone) {
   speakWithBackend(text, onDone).catch((error) => {
     const message = error.message || lastBackendError || "unknown backend error";
     setDiagnostic(`AI backend ვერ ჩაირთო: ${message.slice(0, 180)}. ახლა მხოლოდ backup/demo რეჟიმია.`);
+    if (/quota|billing|insufficient_quota/i.test(message)) {
+      onDone?.("fail", "OpenAI quota/billing");
+      return;
+    }
+
     speakWithBrowser(text, onDone);
   });
 }

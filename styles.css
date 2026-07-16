@@ -168,13 +168,26 @@ h1,
   cursor: pointer;
 }
 
-.reviewBtn {
+.reviewBtn,
+.aresBtn {
   gap: 12px;
   justify-content: center;
   min-width: 224px;
   border-color: transparent;
   background: #3a2200;
   color: var(--amber);
+}
+
+.aresBtn {
+  min-width: 128px;
+  background: #371424;
+  color: #ef9fc0;
+}
+
+.aresBtn.listening {
+  background: var(--pink);
+  color: #1f1719;
+  box-shadow: 0 0 0 6px rgba(233, 141, 178, 0.14);
 }
 
 .readerGrid {
@@ -437,6 +450,10 @@ h1,
   font-size: 1.05rem;
   font-weight: 700;
   line-height: 1.45;
+}
+
+.aresStatus {
+  color: #d7c8cf;
 }
 
 .reading .stage,

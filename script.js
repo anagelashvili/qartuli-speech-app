@@ -9,6 +9,8 @@ const playBtn = document.querySelector("#playBtn");
 const setupPlayBtn = document.querySelector("#setupPlayBtn");
 const nextBtn = document.querySelector("#nextBtn");
 const testVoiceBtn = document.querySelector("#testVoiceBtn");
+const aresBtn = document.querySelector("#aresBtn");
+const aresStatus = document.querySelector("#aresStatus");
 const diagnosticText = document.querySelector("#diagnosticText");
 const progressFill = document.querySelector("#progressFill");
 const slideCounter = document.querySelector("#slideCounter");
@@ -16,6 +18,7 @@ const statusText = document.querySelector("#statusText");
 const slideCanvas = document.querySelector("#slideCanvas");
 const scriptText = document.querySelector("#scriptText");
 const speech = window.speechSynthesis;
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 let slides = [];
 let docSegments = [];
@@ -29,6 +32,8 @@ let readingPartIndex = 0;
 let isVisualFallback = false;
 let activeAudio;
 let lastBackendError = "";
+let aresRecognition;
+let aresEnabled = false;
 
 function setStatus(message) {
   statusText.textContent = message;
@@ -36,6 +41,10 @@ function setStatus(message) {
 
 function setDiagnostic(message) {
   diagnosticText.textContent = message;
+}
+
+function setAresStatus(message) {
+  aresStatus.textContent = message;
 }
 
 function decodeXmlText(text) {
@@ -562,6 +571,98 @@ function goToSlide(nextIndex) {
   }
 }
 
+function handleAresCommand(rawCommand) {
+  const command = rawCommand.toLowerCase().replace(/[.,!?]/g, " ").replace(/\s+/g, " ").trim();
+  const wakeWords = ["ares", "aris", "erase", "heiress", "არესი", "არეს"];
+  const wakeWord = wakeWords.find((word) => command.includes(word));
+
+  if (!wakeWord) {
+    setAresStatus(`Ares უსმენს... გავიგე: “${rawCommand}”`);
+    return;
+  }
+
+  stopReading();
+
+  if (/\b(next|forward)\b|შემდეგ|შემდეგი/.test(command)) {
+    goToSlide(currentSlide + 1);
+    setAresStatus("Ares: შემდეგ სლაიდზე გადავედი.");
+    return;
+  }
+
+  if (/\b(previous|prev|back)\b|წინა|უკან/.test(command)) {
+    goToSlide(currentSlide - 1);
+    setAresStatus("Ares: წინა სლაიდზე დავბრუნდი.");
+    return;
+  }
+
+  if (/\b(play|read|start|speak)\b|წაიკითხე|დაიწყე|გააგრძელე/.test(command)) {
+    setAresStatus("Ares: ვიწყებ წაკითხვას.");
+    readCurrentSlide();
+    return;
+  }
+
+  if (/\b(stop|pause|cancel|quiet)\b|გაჩერდი|შეჩერდი|სდექ/.test(command)) {
+    setAresStatus("Ares: გავჩერდი და გისმენ.");
+    return;
+  }
+
+  setAresStatus("Ares: გავჩერდი. მითხარი play, next, previous ან stop.");
+}
+
+function startAres() {
+  if (!SpeechRecognition) {
+    setAresStatus("Ares ვერ ჩაირთო: ამ ბრაუზერს speech recognition არ აქვს.");
+    return;
+  }
+
+  if (!aresRecognition) {
+    aresRecognition = new SpeechRecognition();
+    aresRecognition.lang = "en-US";
+    aresRecognition.continuous = true;
+    aresRecognition.interimResults = false;
+    aresRecognition.maxAlternatives = 1;
+
+    aresRecognition.addEventListener("result", (event) => {
+      const result = event.results[event.results.length - 1];
+      const transcript = result?.[0]?.transcript || "";
+      if (transcript) {
+        handleAresCommand(transcript);
+      }
+    });
+
+    aresRecognition.addEventListener("end", () => {
+      if (aresEnabled) {
+        try {
+          aresRecognition.start();
+        } catch (error) {
+          setAresStatus("Ares დროებით გაჩერდა. დააჭირე Ares-ს თავიდან.");
+        }
+      }
+    });
+
+    aresRecognition.addEventListener("error", (event) => {
+      setAresStatus(`Ares შეცდომა: ${event.error}.`);
+    });
+  }
+
+  aresEnabled = true;
+  aresBtn.classList.add("listening");
+  setAresStatus("Ares ჩართულია. თქვი: “Ares stop”, “Ares next”, “Ares play”.");
+
+  try {
+    aresRecognition.start();
+  } catch (error) {
+    setAresStatus("Ares უკვე უსმენს.");
+  }
+}
+
+function stopAres() {
+  aresEnabled = false;
+  aresBtn.classList.remove("listening");
+  aresRecognition?.stop();
+  setAresStatus("Ares გამორთულია.");
+}
+
 pptInput.addEventListener("change", async (event) => {
   const file = event.target.files[0];
   if (!file) {
@@ -645,6 +746,15 @@ setupPlayBtn.addEventListener("click", () => {
 
 prevBtn.addEventListener("click", () => goToSlide(currentSlide - 1));
 nextBtn.addEventListener("click", () => goToSlide(currentSlide + 1));
+
+aresBtn.addEventListener("click", () => {
+  if (aresEnabled) {
+    stopAres();
+    return;
+  }
+
+  startAres();
+});
 
 testVoiceBtn.addEventListener("click", () => {
   speech?.cancel();

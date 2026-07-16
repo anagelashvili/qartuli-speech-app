@@ -34,6 +34,7 @@ let activeAudio;
 let lastBackendError = "";
 let aresRecognition;
 let aresEnabled = false;
+let readingSession = 0;
 
 function setStatus(message) {
   statusText.textContent = message;
@@ -328,6 +329,7 @@ function selectedVoice() {
 }
 
 function stopReading() {
+  readingSession += 1;
   clearTimeout(advanceTimer);
   speech?.cancel();
   if (activeAudio) {
@@ -456,6 +458,7 @@ function estimatedReadingTime(text) {
 }
 
 function visualFallbackReadCurrentSlide(reason) {
+  const session = readingSession;
   const script = getSlideScript(currentSlide);
 
   isReading = true;
@@ -467,6 +470,9 @@ function visualFallbackReadCurrentSlide(reason) {
 
   clearTimeout(advanceTimer);
   advanceTimer = setTimeout(() => {
+    if (session !== readingSession) {
+      return;
+    }
     finishSlideReading();
   }, estimatedReadingTime(script));
 }
@@ -498,7 +504,12 @@ function splitForSpeech(text) {
 }
 
 function finishSlideReading() {
+  const session = readingSession;
   advanceTimer = setTimeout(() => {
+    if (session !== readingSession) {
+      return;
+    }
+
     if (currentSlide < slides.length - 1) {
       currentSlide += 1;
       renderSlide();
@@ -512,6 +523,7 @@ function finishSlideReading() {
 }
 
 function speakNextPart() {
+  const session = readingSession;
   const text = readingParts[readingPartIndex];
 
   if (isVisualFallback) {
@@ -524,6 +536,10 @@ function speakNextPart() {
   }
 
   speakText(text, (state) => {
+    if (session !== readingSession) {
+      return;
+    }
+
     if (state === "start") {
       isReading = true;
       document.body.classList.add("reading");
@@ -552,7 +568,8 @@ function readCurrentSlide() {
   }
 
   clearTimeout(advanceTimer);
-  speech.cancel();
+  speech?.cancel();
+  readingSession += 1;
   readingParts = splitForSpeech(script);
   readingPartIndex = 0;
   speakNextPart();
@@ -581,31 +598,41 @@ function handleAresCommand(rawCommand) {
     return;
   }
 
-  stopReading();
+  const commandWithoutWake = command.replace(wakeWord, "").trim();
+  if (!commandWithoutWake) {
+    stopReading();
+    setAresStatus("Ares: გავჩერდი და გისმენ.");
+    return;
+  }
 
   if (/\b(next|forward)\b|შემდეგ|შემდეგი/.test(command)) {
+    stopReading();
     goToSlide(currentSlide + 1);
     setAresStatus("Ares: შემდეგ სლაიდზე გადავედი.");
     return;
   }
 
   if (/\b(previous|prev|back)\b|წინა|უკან/.test(command)) {
+    stopReading();
     goToSlide(currentSlide - 1);
     setAresStatus("Ares: წინა სლაიდზე დავბრუნდი.");
     return;
   }
 
   if (/\b(play|read|start|speak)\b|წაიკითხე|დაიწყე|გააგრძელე/.test(command)) {
+    stopReading();
     setAresStatus("Ares: ვიწყებ წაკითხვას.");
     readCurrentSlide();
     return;
   }
 
-  if (/\b(stop|pause|cancel|quiet)\b|გაჩერდი|შეჩერდი|სდექ/.test(command)) {
+  if (/\b(stop|pause|cancel|quiet|shut|halt|enough)\b|გაჩერდი|შეჩერდი|სდექ|გაჩერდეს|გააჩერე/.test(command)) {
+    stopReading();
     setAresStatus("Ares: გავჩერდი და გისმენ.");
     return;
   }
 
+  stopReading();
   setAresStatus("Ares: გავჩერდი. მითხარი play, next, previous ან stop.");
 }
 

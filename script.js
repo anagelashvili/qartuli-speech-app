@@ -662,6 +662,12 @@ function readCurrentSlide() {
   readingSession += 1;
   readingParts = splitForSpeech(script);
   readingPartIndex = 0;
+  isReading = true;
+  isVisualFallback = false;
+  document.body.classList.add("reading");
+  playBtn.textContent = "■";
+  setupPlayBtn.textContent = "შეჩერება";
+  setStatus("ხმა მზადდება...");
   speakNextPart();
 }
 

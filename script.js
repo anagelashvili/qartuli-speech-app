@@ -44,6 +44,50 @@ function decodeXmlText(text) {
   return textarea.value;
 }
 
+function containsGeorgian(text) {
+  return /[\u10A0-\u10FF]/.test(text);
+}
+
+function transliterateGeorgian(text) {
+  const map = {
+    ა: "a",
+    ბ: "b",
+    გ: "g",
+    დ: "d",
+    ე: "e",
+    ვ: "v",
+    ზ: "z",
+    თ: "t",
+    ი: "i",
+    კ: "k",
+    ლ: "l",
+    მ: "m",
+    ნ: "n",
+    ო: "o",
+    პ: "p",
+    ჟ: "zh",
+    რ: "r",
+    ს: "s",
+    ტ: "t",
+    უ: "u",
+    ფ: "p",
+    ქ: "k",
+    ღ: "gh",
+    ყ: "q",
+    შ: "sh",
+    ჩ: "ch",
+    ც: "ts",
+    ძ: "dz",
+    წ: "ts",
+    ჭ: "ch",
+    ხ: "kh",
+    ჯ: "j",
+    ჰ: "h",
+  };
+
+  return [...text].map((char) => map[char] || char).join("");
+}
+
 function textFromXml(xmlText) {
   const xml = new DOMParser().parseFromString(xmlText, "application/xml");
   return [...xml.getElementsByTagName("*")]
@@ -333,9 +377,9 @@ async function speakWithBackend(text, onDone) {
 function speakText(text, onDone) {
   speakWithBackend(text, onDone).catch((error) => {
     const message = error.message || lastBackendError || "unknown backend error";
-    setDiagnostic(`AI backend ვერ ჩაირთო: ${message.slice(0, 180)}. ახლა მხოლოდ backup/demo რეჟიმია.`);
+    setDiagnostic(`AI backend ვერ ჩაირთო: ${message.slice(0, 180)}. ვცდი transliteration backup ხმას.`);
     if (/quota|billing|insufficient_quota/i.test(message)) {
-      onDone?.("fail", "OpenAI quota/billing");
+      speakWithBrowser(transliterateGeorgian(text), onDone, { forceEnglish: true });
       return;
     }
 
@@ -343,15 +387,18 @@ function speakText(text, onDone) {
   });
 }
 
-function speakWithBrowser(text, onDone) {
+function speakWithBrowser(text, onDone, options = {}) {
   if (!speech) {
     onDone?.("fail", "ამ ბრაუზერს ხმით წაკითხვა არ შეუძლია");
     return;
   }
 
-  const utterance = new SpeechSynthesisUtterance(text);
   const voice = selectedVoice();
-  utterance.lang = voice?.lang || "ka-GE";
+  const voiceLang = voice?.lang || "";
+  const shouldTransliterate = options.forceEnglish || (containsGeorgian(text) && !voiceLang.toLowerCase().startsWith("ka"));
+  const spokenText = shouldTransliterate ? transliterateGeorgian(text) : text;
+  const utterance = new SpeechSynthesisUtterance(spokenText);
+  utterance.lang = options.forceEnglish ? "en-US" : voiceLang || "ka-GE";
   utterance.rate = 0.88;
   utterance.pitch = 1;
 
@@ -488,11 +535,6 @@ function speakNextPart() {
 }
 
 function readCurrentSlide() {
-  if (!speech) {
-    visualFallbackReadCurrentSlide("speechSynthesis არ არის");
-    return;
-  }
-
   const script = getSlideScript(currentSlide);
 
   if (!script) {

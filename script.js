@@ -340,7 +340,6 @@ function cancelBrowserSpeech() {
   speech.cancel();
   speech.resume();
   speech.cancel();
-  setTimeout(() => speech.cancel(), 0);
 }
 
 function stopReading() {

@@ -31,6 +31,7 @@ let readingParts = [];
 let readingPartIndex = 0;
 let isVisualFallback = false;
 let activeAudio;
+let activeTtsController;
 let lastBackendError = "";
 let aresRecognition;
 let aresEnabled = false;
@@ -328,13 +329,28 @@ function selectedVoice() {
   return voices.find((voice) => voice.name === voiceSelect.value) || voices.find((voice) => voice.lang?.toLowerCase().startsWith("ka")) || null;
 }
 
+function cancelBrowserSpeech() {
+  if (!speech) {
+    return;
+  }
+
+  speech.pause();
+  speech.cancel();
+  speech.resume();
+  speech.cancel();
+  setTimeout(() => speech.cancel(), 0);
+}
+
 function stopReading() {
   readingSession += 1;
   clearTimeout(advanceTimer);
-  speech?.cancel();
+  activeTtsController?.abort();
+  activeTtsController = null;
+  cancelBrowserSpeech();
   if (activeAudio) {
     activeAudio.pause();
     activeAudio.src = "";
+    activeAudio.load();
   }
   activeAudio = null;
   readingParts = [];
@@ -346,14 +362,19 @@ function stopReading() {
   setupPlayBtn.textContent = "წაკითხვა";
 }
 
-async function speakWithBackend(text, onDone) {
+async function speakWithBackend(text, onDone, options = {}) {
   const result = await fetch("/api/tts", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ text }),
+    signal: options.signal,
   });
+
+  if (options.signal?.aborted) {
+    return;
+  }
 
   if (!result.ok) {
     const message = await result.text();
@@ -362,43 +383,90 @@ async function speakWithBackend(text, onDone) {
   }
 
   const audioBlob = await result.blob();
+  if (options.signal?.aborted) {
+    return;
+  }
+
   const audioUrl = URL.createObjectURL(audioBlob);
   const audio = new Audio(audioUrl);
   activeAudio = audio;
 
-  audio.onplay = () => onDone?.("start");
+  const stopAudio = () => {
+    audio.pause();
+    audio.src = "";
+    audio.load();
+    URL.revokeObjectURL(audioUrl);
+    if (activeAudio === audio) {
+      activeAudio = null;
+    }
+  };
+
+  options.signal?.addEventListener("abort", stopAudio, { once: true });
+
+  audio.onplay = () => {
+    if (!options.signal?.aborted) {
+      onDone?.("start");
+    }
+  };
   audio.onended = () => {
     URL.revokeObjectURL(audioUrl);
     if (activeAudio === audio) {
       activeAudio = null;
     }
-    onDone?.("end");
+    if (!options.signal?.aborted) {
+      onDone?.("end");
+    }
   };
   audio.onerror = () => {
     URL.revokeObjectURL(audioUrl);
     if (activeAudio === audio) {
       activeAudio = null;
     }
-    onDone?.("fail", "audio playback failed");
+    if (!options.signal?.aborted) {
+      onDone?.("fail", "audio playback failed");
+    }
   };
+
+  if (options.signal?.aborted) {
+    stopAudio();
+    return;
+  }
 
   await audio.play();
 }
 
 function speakText(text, onDone) {
-  speakWithBackend(text, onDone).catch((error) => {
+  const session = readingSession;
+  const controller = new AbortController();
+  activeTtsController?.abort();
+  activeTtsController = controller;
+  const guardedDone = (state, reason) => {
+    if (controller.signal.aborted || session !== readingSession) {
+      return;
+    }
+    onDone?.(state, reason);
+  };
+
+  speakWithBackend(text, guardedDone, { signal: controller.signal }).catch((error) => {
+    if (controller.signal.aborted || session !== readingSession) {
+      return;
+    }
     const message = error.message || lastBackendError || "unknown backend error";
     setDiagnostic(`AI backend ვერ ჩაირთო: ${message.slice(0, 180)}. ვცდი transliteration backup ხმას.`);
     if (/quota|billing|insufficient_quota/i.test(message)) {
-      speakWithBrowser(transliterateGeorgian(text), onDone, { forceEnglish: true });
+      speakWithBrowser(transliterateGeorgian(text), guardedDone, { forceEnglish: true, signal: controller.signal });
       return;
     }
 
-    speakWithBrowser(text, onDone);
+    speakWithBrowser(text, guardedDone, { signal: controller.signal });
   });
 }
 
 function speakWithBrowser(text, onDone, options = {}) {
+  if (options.signal?.aborted) {
+    return;
+  }
+
   if (!speech) {
     onDone?.("fail", "ამ ბრაუზერს ხმით წაკითხვა არ შეუძლია");
     return;
@@ -420,13 +488,22 @@ function speakWithBrowser(text, onDone, options = {}) {
   let started = false;
   let startedAt = 0;
   const startGuard = setTimeout(() => {
-    if (!started) {
+    if (!started && !options.signal?.aborted) {
       setStatus("ხმა არ დაიწყო. სცადე Chrome/Edge ან სხვა voice dropdown-იდან.");
       onDone?.("fail", "ხმა არ დაიწყო");
     }
   }, 1400);
 
+  options.signal?.addEventListener("abort", () => {
+    clearTimeout(startGuard);
+    cancelBrowserSpeech();
+  }, { once: true });
+
   utterance.onstart = () => {
+    if (options.signal?.aborted) {
+      cancelBrowserSpeech();
+      return;
+    }
     started = true;
     startedAt = performance.now();
     clearTimeout(startGuard);
@@ -435,6 +512,9 @@ function speakWithBrowser(text, onDone, options = {}) {
 
   utterance.onend = () => {
     clearTimeout(startGuard);
+    if (options.signal?.aborted) {
+      return;
+    }
     if (startedAt && performance.now() - startedAt < 250) {
       onDone?.("fail", "ხმა მაშინვე დასრულდა");
       return;
@@ -444,11 +524,15 @@ function speakWithBrowser(text, onDone, options = {}) {
 
   utterance.onerror = (event) => {
     clearTimeout(startGuard);
+    if (options.signal?.aborted) {
+      return;
+    }
     stopReading();
     setStatus(`ხმის შეცდომა: ${event.error || "unknown"}. სცადე სხვა ბრაუზერი ან voice.`);
     onDone?.("fail", event.error || "unknown");
   };
 
+  cancelBrowserSpeech();
   speech.speak(utterance);
 }
 
@@ -568,7 +652,9 @@ function readCurrentSlide() {
   }
 
   clearTimeout(advanceTimer);
-  speech?.cancel();
+  activeTtsController?.abort();
+  activeTtsController = null;
+  cancelBrowserSpeech();
   readingSession += 1;
   readingParts = splitForSpeech(script);
   readingPartIndex = 0;

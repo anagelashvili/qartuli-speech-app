@@ -524,7 +524,7 @@ function speakWithBrowser(text, onDone, options = {}) {
 
   utterance.onerror = (event) => {
     clearTimeout(startGuard);
-    if (options.signal?.aborted) {
+    if (options.signal?.aborted || ["interrupted", "canceled", "cancelled"].includes(event.error)) {
       return;
     }
     stopReading();

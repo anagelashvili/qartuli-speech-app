@@ -32,6 +32,7 @@ let readingPartIndex = 0;
 let isVisualFallback = false;
 let activeAudio;
 let activeTtsController;
+let ignoreSpeechErrorsUntil = 0;
 let lastBackendError = "";
 let aresRecognition;
 let aresEnabled = false;
@@ -334,6 +335,7 @@ function cancelBrowserSpeech() {
     return;
   }
 
+  ignoreSpeechErrorsUntil = Date.now() + 900;
   speech.pause();
   speech.cancel();
   speech.resume();
@@ -524,7 +526,9 @@ function speakWithBrowser(text, onDone, options = {}) {
 
   utterance.onerror = (event) => {
     clearTimeout(startGuard);
-    if (options.signal?.aborted || ["interrupted", "canceled", "cancelled"].includes(event.error)) {
+    const errorName = String(event.error || "").toLowerCase().trim();
+    const isExpectedCancel = Date.now() < ignoreSpeechErrorsUntil || ["interrupted", "canceled", "cancelled"].includes(errorName);
+    if (options.signal?.aborted || isExpectedCancel) {
       return;
     }
     stopReading();

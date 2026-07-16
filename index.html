@@ -8,43 +8,59 @@
   </head>
   <body>
     <main class="app">
-      <header class="toolbar" aria-label="ატვირთვა და მართვა">
-        <label class="filePicker">
-          <span>PowerPoint</span>
-          <input id="pptInput" type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
-        </label>
-
-        <label class="filePicker">
-          <span>Word ტექსტი</span>
-          <input id="docInput" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
-        </label>
-
-        <select id="voiceSelect" aria-label="ხმის არჩევა">
-          <option value="">ქართული ხმა</option>
-        </select>
-
-        <div class="buttons">
-          <button id="prevBtn" type="button" title="წინა სლაიდი">‹</button>
-          <button id="playBtn" type="button">წაკითხვა</button>
-          <button id="nextBtn" type="button" title="შემდეგი სლაიდი">›</button>
+      <header class="hero">
+        <div>
+          <p class="eyebrow">ქართული AI პრეზენტატორი</p>
+          <h1>პრეზენტაცია, რომელიც ქართულად კითხულობს ტექსტს</h1>
         </div>
+        <p id="statusText" class="statusPill">ატვირთე PowerPoint და Word ტექსტი</p>
       </header>
 
-      <section class="reader">
-        <section class="slideFrame" aria-label="პრეზენტაციის ფრეიმი">
-          <div class="slideMeta">
+      <section class="workspace">
+        <aside class="controlPanel" aria-label="ატვირთვა და მართვა">
+          <label class="filePicker">
+            <span>PowerPoint ფაილი</span>
+            <strong id="pptName">.pptx ატვირთე</strong>
+            <input id="pptInput" type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+          </label>
+
+          <label class="filePicker">
+            <span>Word ტექსტი</span>
+            <strong id="docName">.docx ატვირთე</strong>
+            <input id="docInput" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+          </label>
+
+          <label class="selectWrap">
+            <span>ხმა</span>
+            <select id="voiceSelect" aria-label="ხმის არჩევა">
+              <option value="">ხმები იტვირთება...</option>
+            </select>
+          </label>
+
+          <div class="buttons">
+            <button id="prevBtn" type="button" title="წინა სლაიდი">‹</button>
+            <button id="playBtn" type="button">წაკითხვა</button>
+            <button id="nextBtn" type="button" title="შემდეგი სლაიდი">›</button>
+          </div>
+
+          <button id="testVoiceBtn" class="ghostBtn" type="button">ხმის ტესტი</button>
+          <p id="diagnosticText" class="diagnostic">AI ხმა იმუშავებს Vercel-ზე OPENAI_API_KEY-ის დაყენების შემდეგ. ლოკალურად fallback რეჟიმი ჩაირთვება.</p>
+        </aside>
+
+        <section class="stage" aria-label="პრეზენტაციის ფრეიმი">
+          <div class="slideTop">
             <span id="slideCounter">სლაიდი 0 / 0</span>
-            <span id="statusText">ატვირთე PowerPoint და Word ტექსტი</span>
+            <span>ავტომატური გადართვა: 2 წამი</span>
           </div>
           <article id="slideCanvas" class="slideCanvas">
-            <h1>ქართული პრეზენტაციის მკითხველი</h1>
-            <p>ატვირთე .pptx პრეზენტაცია და სურვილის შემთხვევაში .docx ტექსტი. შემდეგ დააჭირე „წაკითხვა“-ს.</p>
+            <h2>დაიწყე ფაილების ატვირთვით</h2>
+            <p>ატვირთე PowerPoint პრეზენტაცია და Word ტექსტი. ტექსტის დასრულებიდან 2 წამში სლაიდი ავტომატურად შეიცვლება.</p>
           </article>
         </section>
 
         <aside class="scriptPanel" aria-label="წასაკითხი ტექსტი">
-          <h2>სლაიდის ტექსტი</h2>
-          <p id="scriptText">აქ გამოჩნდება ტექსტი, რომელსაც ქართული ხმა წაიკითხავს.</p>
+          <h2>წასაკითხი ტექსტი</h2>
+          <p id="scriptText">აქ გამოჩნდება ტექსტი, რომელსაც ხმა წაიკითხავს.</p>
         </aside>
       </section>
     </main>

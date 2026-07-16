@@ -25,6 +25,7 @@ let readingParts = [];
 let readingPartIndex = 0;
 let isVisualFallback = false;
 let activeAudio;
+let lastBackendError = "";
 
 function setStatus(message) {
   statusText.textContent = message;
@@ -32,6 +33,12 @@ function setStatus(message) {
 
 function setDiagnostic(message) {
   diagnosticText.textContent = message;
+}
+
+function decodeXmlText(text) {
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = text;
+  return textarea.value;
 }
 
 function textFromXml(xmlText) {
@@ -123,7 +130,7 @@ async function loadWord(file) {
 
   const documentXml = await documentFile.async("text");
   const xml = new DOMParser().parseFromString(documentXml, "application/xml");
-  const paragraphs = [...xml.getElementsByTagName("*")]
+  let paragraphs = [...xml.getElementsByTagName("*")]
     .filter((node) => node.localName === "p")
     .map((paragraph) =>
       [...paragraph.getElementsByTagName("*")]
@@ -135,12 +142,26 @@ async function loadWord(file) {
     )
     .filter(Boolean);
 
+  if (!paragraphs.length) {
+    const textMatches = [...documentXml.matchAll(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g)];
+    const fallbackText = textMatches
+      .map((match) => decodeXmlText(match[1]))
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    paragraphs = fallbackText ? [fallbackText] : [];
+  }
+
   docFullText = paragraphs.join("\n\n");
   docSegments = splitTextIntoSegments(docFullText, slides.length);
   if (!slides.length) {
     createSlidesFromDocSegments();
   }
   setStatus(`Word ტექსტი ჩაიტვირთა: ${docSegments.length} ნაწილი`);
+  if (!docSegments.length) {
+    setStatus("Word ჩაიტვირთა, მაგრამ ტექსტი ვერ ამოვიკითხე. სცადე .docx ფორმატად ხელახლა Save As.");
+  }
   renderSlide();
 }
 
@@ -190,9 +211,8 @@ function escapeHtml(text) {
 function populateVoices() {
   if (!speech) {
     voiceSelect.innerHTML = '<option value="">ხმა მიუწვდომელია</option>';
-    playBtn.disabled = true;
     testVoiceBtn.disabled = true;
-    setDiagnostic("ამ ბრაუზერში speechSynthesis საერთოდ არ არის. გახსენი Chrome ან Edge-ში.");
+    setDiagnostic("Browser backup voice მიუწვდომელია. AI ხმა მაინც იმუშავებს, თუ /api/tts სწორადაა დაყენებული.");
     return;
   }
 
@@ -221,14 +241,14 @@ function populateVoices() {
   }
 
   if (!voices.length) {
-    setDiagnostic("ხმების სია ჯერ ცარიელია. დააჭირე „ხმის ტესტი“-ს ან გახსენი გვერდი Chrome/Edge-ში.");
+    setDiagnostic("AI ხმა არის მთავარი. Browser backup voice-ების სია ჯერ ცარიელია.");
     return;
   }
 
   if (georgianVoices.length) {
-    setDiagnostic(`ნაპოვნია ${voices.length} ხმა. ქართული ხმა მზადაა: ${georgianVoices[0].name}.`);
+    setDiagnostic(`AI ხმა არის მთავარი. Browser backup-ად ქართული ხმაც ჩანს: ${georgianVoices[0].name}.`);
   } else {
-    setDiagnostic(`ნაპოვნია ${voices.length} ხმა, მაგრამ ქართული voice არ ჩანს. სხვა voice შეიძლება ქართულს არ კითხულობდეს.`);
+    setDiagnostic(`AI ხმა არის მთავარი. Browser backup-ში ${voices.length} ხმაა, მაგრამ ქართული voice არ ჩანს.`);
   }
 }
 
@@ -263,6 +283,7 @@ async function speakWithBackend(text, onDone) {
 
   if (!result.ok) {
     const message = await result.text();
+    lastBackendError = message;
     throw new Error(message || "TTS backend failed");
   }
 
@@ -291,7 +312,9 @@ async function speakWithBackend(text, onDone) {
 }
 
 function speakText(text, onDone) {
-  speakWithBackend(text, onDone).catch(() => {
+  speakWithBackend(text, onDone).catch((error) => {
+    const message = error.message || lastBackendError || "unknown backend error";
+    setDiagnostic(`AI backend ვერ ჩაირთო: ${message.slice(0, 180)}. ახლა მხოლოდ backup/demo რეჟიმია.`);
     speakWithBrowser(text, onDone);
   });
 }
@@ -520,10 +543,10 @@ nextBtn.addEventListener("click", () => goToSlide(currentSlide + 1));
 
 testVoiceBtn.addEventListener("click", () => {
   speech?.cancel();
-  setStatus("ხმის ტესტი იწყება...");
+  setStatus("AI ხმის ტესტი იწყება...");
   speakText("გამარჯობა, ეს არის ქართული ხმის ტესტი.", (state, reason) => {
     if (state === "start") {
-      setStatus("ხმის ტესტი მუშაობს");
+      setStatus("ხმა მუშაობს");
     }
 
     if (state === "end") {
@@ -531,7 +554,7 @@ testVoiceBtn.addEventListener("click", () => {
     }
 
     if (state === "fail") {
-      setStatus(`ხმის ტესტი ვერ გავიდა: ${reason}. გახსენი რეალურ Chrome/Edge-ში.`);
+      setStatus(`ხმის ტესტი ვერ გავიდა: ${reason}. გადაამოწმე Vercel OPENAI_API_KEY.`);
     }
   });
 });
